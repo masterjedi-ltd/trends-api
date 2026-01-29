@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'Worgz! /trends?keyword=bitcoin lub /trending'
+    return 'API działa! Użyj /trends?keyword=bitcoin lub /trending'
 
 @app.route('/trending')
 def get_trending():
@@ -15,37 +15,35 @@ def get_trending():
         geo = request.args.get('geo', 'PL')
         limit = int(request.args.get('limit', 50))
         
-        # Daily Trends API - więcej danych
         url = f'https://trends.google.com/trends/api/dailytrends?hl=pl&tz=-120&geo={geo}&ns=15'
         
-        response = requests.get(url)
-        # Usuń prefix ")]}'\n"
-        clean = response.text[5:]
-        data = json.loads(clean)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        # Debug
+        if response.status_code != 200:
+            return jsonify({'error': f'Status: {response.status_code}', 'body': response.text[:500]}), 500
+        
+        text = response.text
+        
+        # Usuń prefix ")]}'"
+        if text.startswith(")]}'"):
+            text = text[5:]
+        
+        data = json.loads(text)
         
         items = []
-        for day in data['default']['trendingSearchesDays']:
-            for search in day['trendingSearches']:
-                title = search['title']['query']
+        for day in data.get('default', {}).get('trendingSearchesDays', []):
+            for search in day.get('trendingSearches', []):
+                title = search.get('title', {}).get('query', '')
                 traffic = search.get('formattedTraffic', 'N/A')
-                
-                # Related queries
-                related = [q['query'] for q in search.get('relatedQueries', [])]
-                
-                # Articles
-                articles = []
-                for article in search.get('articles', []):
-                    articles.append({
-                        'title': article.get('title', ''),
-                        'source': article.get('source', ''),
-                        'url': article.get('url', '')
-                    })
                 
                 items.append({
                     'keyword': title,
-                    'traffic': traffic,
-                    'related': related,
-                    'articles': articles
+                    'traffic': traffic
                 })
                 
                 if len(items) >= limit:
@@ -64,30 +62,31 @@ def get_realtime():
         geo = request.args.get('geo', 'PL')
         limit = int(request.args.get('limit', 50))
         
-        # Realtime Trends API
         url = f'https://trends.google.com/trends/api/realtimetrends?hl=pl&tz=-120&geo={geo}&cat=all&fi=0&fs=0&ri=300&rs=20&sort=0'
         
-        response = requests.get(url)
-        clean = response.text[5:]
-        data = json.loads(clean)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        # Debug
+        if response.status_code != 200:
+            return jsonify({'error': f'Status: {response.status_code}', 'body': response.text[:500]}), 500
+        
+        text = response.text
+        
+        if text.startswith(")]}'"):
+            text = text[5:]
+        
+        data = json.loads(text)
         
         items = []
         for story in data.get('storySummaries', {}).get('trendingStories', []):
             title = story.get('title', '')
-            entities = [e.get('title', '') for e in story.get('entityNames', [])]
-            
-            articles = []
-            for article in story.get('articles', []):
-                articles.append({
-                    'title': article.get('articleTitle', ''),
-                    'source': article.get('source', ''),
-                    'url': article.get('url', '')
-                })
             
             items.append({
-                'title': title,
-                'keywords': entities,
-                'articles': articles
+                'title': title
             })
             
             if len(items) >= limit:
