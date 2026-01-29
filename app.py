@@ -3,6 +3,10 @@ from pytrends.request import TrendReq
 
 app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return 'API działa! Użyj /trends'
+
 @app.route('/trends')
 def get_trends():
     keyword = request.args.get('keyword', '')
@@ -11,12 +15,10 @@ def get_trends():
     
     pytrends = TrendReq(hl='pl-PL', tz=120)
     
-    # Jeśli brak keyword → zwróć trending searches
     if not keyword:
         trending = pytrends.trending_searches(pn='poland')
         return jsonify(trending[0].tolist())
     
-    # Jeśli jest keyword → interest over time
     pytrends.build_payload([keyword], timeframe=timeframe, geo=geo)
     df = pytrends.interest_over_time()
     
