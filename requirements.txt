@@ -1,3 +1,5 @@
 flask
 pytrends
 gunicorn
+urllib3<2.0
+requests<2.32.0
