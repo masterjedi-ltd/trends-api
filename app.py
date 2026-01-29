@@ -1,34 +1,11 @@
-from flask import Flask, request, jsonify
-from pytrends.request import TrendReq
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'API działa! Użyj /trends'
+    return 'API działa!'
 
 @app.route('/trends')
 def get_trends():
-    try:
-        keyword = request.args.get('keyword', '')
-        geo = request.args.get('geo', 'PL')
-        timeframe = request.args.get('timeframe', 'now 1-d')
-        
-        pytrends = TrendReq(hl='pl-PL', tz=120, retries=3, backoff_factor=1)
-        
-        if not keyword:
-            trending = pytrends.trending_searches(pn='poland')
-            return jsonify(trending[0].tolist())
-        
-        pytrends.build_payload([keyword], timeframe=timeframe, geo=geo)
-        df = pytrends.interest_over_time()
-        
-        if df.empty:
-            return jsonify([])
-        
-        df = df.reset_index()
-        df['date'] = df['date'].astype(str)
-        return jsonify(df.to_dict(orient='records'))
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'status': 'ok', 'message': 'Test dziala'})
