@@ -1,68 +1,20 @@
 from flask import Flask, request, jsonify
 from pytrends.request import TrendReq
 import requests
-import json
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'API działa! Użyj /trends?keyword=bitcoin lub /trending'
+    return 'API działa!'
 
 @app.route('/trending')
 def get_trending():
     try:
         geo = request.args.get('geo', 'PL')
-        limit = int(request.args.get('limit', 50))
         
-        url = f'https://trends.google.com/trends/api/dailytrends?hl=pl&tz=-120&geo={geo}&ns=15'
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        response = requests.get(url, headers=headers)
-        
-        # Debug
-        if response.status_code != 200:
-            return jsonify({'error': f'Status: {response.status_code}', 'body': response.text[:500]}), 500
-        
-        text = response.text
-        
-        # Usuń prefix ")]}'"
-        if text.startswith(")]}'"):
-            text = text[5:]
-        
-        data = json.loads(text)
-        
-        items = []
-        for day in data.get('default', {}).get('trendingSearchesDays', []):
-            for search in day.get('trendingSearches', []):
-                title = search.get('title', {}).get('query', '')
-                traffic = search.get('formattedTraffic', 'N/A')
-                
-                items.append({
-                    'keyword': title,
-                    'traffic': traffic
-                })
-                
-                if len(items) >= limit:
-                    break
-            if len(items) >= limit:
-                break
-        
-        return jsonify(items)
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/realtime')
-def get_realtime():
-    try:
-        geo = request.args.get('geo', 'PL')
-        limit = int(request.args.get('limit', 50))
-        
-        url = f'https://trends.google.com/trends/api/realtimetrends?hl=pl&tz=-120&geo={geo}&cat=all&fi=0&fs=0&ri=300&rs=20&sort=0'
+        url = f'https://trends.google.com/trending/rss?geo={geo}'
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -70,27 +22,23 @@ def get_realtime():
         
         response = requests.get(url, headers=headers)
         
-        # Debug
         if response.status_code != 200:
-            return jsonify({'error': f'Status: {response.status_code}', 'body': response.text[:500]}), 500
+            return jsonify({'error': f'Status: {response.status_code}'}), 500
         
-        text = response.text
+        root = ET.fromstring(response.content)
         
-        if text.startswith(")]}'"):
-            text = text[5:]
-        
-        data = json.loads(text)
+        ns = {'ht': 'https://trends.google.com/trending/rss'}
         
         items = []
-        for story in data.get('storySummaries', {}).get('trendingStories', []):
-            title = story.get('title', '')
+        for item in root.findall('.//item'):
+            title = item.find('title').text if item.find('title') is not None else ''
+            traffic = item.find('ht:approx_traffic', ns)
+            traffic_text = traffic.text if traffic is not None else 'N/A'
             
             items.append({
-                'title': title
+                'keyword': title,
+                'traffic': traffic_text
             })
-            
-            if len(items) >= limit:
-                break
         
         return jsonify(items)
     
