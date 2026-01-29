@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'API działa! Użyj /trends?keyword=bitcoin lub /trending'
+    return 'Worgz! /trends?keyword=bitcoin lub /trending'
 
 @app.route('/trending')
 def get_trending():
